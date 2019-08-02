@@ -1,2 +1,2 @@
 #!Rscript used in paper for CNV calling and annotation
-# Substitute local pathways and files read for corresponfing in your system
+# Substitute local pathways and files needed for corresponding ones in your system
