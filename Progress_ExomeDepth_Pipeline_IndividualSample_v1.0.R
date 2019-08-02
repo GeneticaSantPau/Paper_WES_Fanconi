@@ -1,7 +1,5 @@
 #!Rscript
 rm(list=ls())
-#setwd("/media/DC3C31523C312942/DATA/qGenAnalysis/ExomeDepth_CNVS_Agi51")
-setwd("/home/gensp/Escriptori/")
 # Libraries
 library(GenomicRanges)
 library(IRanges)
@@ -14,77 +12,56 @@ library(bedr)
 library(gridExtra)
 library(xlsx)
 ########################### ###########################
-# ARGUMENTS TRANSFERITS ###############################
+# ARGUMENTS from pipeline ###############################
 ########################### ###########################
 args <- commandArgs(TRUE)
-ID<- args[1]
-data<- args[2]
-#data<-c("/media/gensp/DATA2/calling/NF1_SPRED1_SaraParcial/17-1330/17-1330.20032018/17-1330.7.Annotation/17-1330.RAW.genome_summary_plusHomHem_gnomAD.NF1_SPRED1_SaraParcial.txt")
-outDir<- args[3]
-captura<-args[4]
-regionName<-args[5]
-label<-args[6]
-bedFile<-args[7]
-candListCheck<-args[8]
-#bedFile<-c("/media/DC3C31523C312942/NimblGen_data/MedExome/MedExome_hg19_capture_targets.bed")
-#bedFile<-c("/media/gensp/DATA/NGSpipeline/extraFilesNeeded/captureROIfiles/IDP_IDPFull_Targets_Standard_ORIGINAL_SORTED.bed")
+ID<- args[1]  # Sample name/ID
+data<- args[2]   # Day of thea analysis
 
-# Exomes previs Massimo: bedFile ExomeDepth fixe, independent de la captura:
-if(captura=="Fanconi_Massimo"){
-bedFile<-c("/media/gensp/DATA/NGSpipeline/databases/UCSC/RefSeqGenes_RefFlat_CodingExonsHg19_31Gener2018_bedtools_joined_RefSeqGenes_RefFlat_RefGeneNMs_AllExonsHg19_31Gener2018_sorted_simplified_FINAL2.bed")
-}
-
-
-########################### ###########################
-# DADES EXISTENTS ###########################
-########################### ###########################
+outDir<- args[3] # Output folder
+captura<-args[4] # Capture ID (Exome-Agilent, Exome-Roche ...)
+regionName<-args[5] # Label of geneList to analyse
+label<-args[6] # Label for used capture
+bedFile<-args[7] # Target bed file of the used capture
+candListCheck<-args[8] # File with gene IDs to obtain spcific results from capture panel, one gene per line
+######################################################
+# DATA needed
+######################################################
 ExomeCountDir<- paste("/media/gensp/DATA2/BAMs/",captura,sep="")
 bamDir<-ExomeCountDir
 
 # Complementary data
-#fasta<-c("/disk2/Genomes/index/hg19/bwa_path/bwa062/Homo_sapiens_assembly19.fasta")
-fasta<-c("/media/gensp/DATA/NGSpipeline/databases/references/b37/human_g1k_v37.fasta")
-#fasta<-c("/media/gensp/DATA/NGSpipeline/databases/references/hg19/hg19_ucsc_bwaidx.fa")
-
-#exons.hg19<-read.delim("/media/DC3C31523C312942/UCSC_DB/RefSeq_data_hg19/RefSeq_RefFlat_codingExons_hg19_03May2017.simplified.bed", head=F) 
-exons.hg19<-read.delim("/media/gensp/DATA/NGSpipeline/databases/UCSC/RefSeqGenes_RefFlat_CodingExonsHg19_31Gener2018_bedtools_joined_RefSeqGenes_RefFlat_RefGeneNMs_AllExonsHg19_31Gener2018_sorted_simplified_FINAL2.merged.bed", head=F)
+fasta<-c("~/NGSpipeline/databases/references/b37/human_g1k_v37.fasta")
+exons.hg19<-read.delim("~/databases/UCSC/RefSeqGenes_RefFlat_CodingExonsHg19_31Gener2018_bedtools_joined_RefSeqGenes_RefFlat_RefGeneNMs_AllExonsHg19_31Gener2018_sorted_simplified_FINAL2.merged.bed", head=F)
 names(exons.hg19)<-c("chromosome", "start", "end", "name", "strand", "gene","NM","exon")
 exons.hg19$chromosome<-gsub("chr", "",exons.hg19$chromosome)
 exons.hg19.GRanges <- GRanges(seqnames = exons.hg19$chromosome, IRanges(start=exons.hg19$start, end=exons.hg19$end), names = exons.hg19$name)
 # Exon unique intervals:
-N.intervals.hg19<-read.delim("/media/gensp/DATA/NGSpipeline/databases/UCSC/RefSeqGenes_RefFlat_CodingExonsHg19_31Gener2018_bedtools_joined_RefSeqGenes_RefFlat_RefGeneNMs_AllExonsHg19_31Gener2018_sorted_simplified_FINAL2_UniqueIntervalsWithNumber1.bed", head=F)
+N.intervals.hg19<-read.delim("~/databases/UCSC/RefSeqGenes_RefFlat_CodingExonsHg19_31Gener2018_bedtools_joined_RefSeqGenes_RefFlat_RefGeneNMs_AllExonsHg19_31Gener2018_sorted_simplified_FINAL2_UniqueIntervalsWithNumber1.bed", head=F)
 names(N.intervals.hg19)<-c("chromosome", "start", "end", "name")
 N.intervals.hg19$chromosome<-gsub("chr", "",N.intervals.hg19$chromosome)
 N.intervals.hg19.GRanges <- GRanges(seqnames = N.intervals.hg19$chromosome, IRanges(start=N.intervals.hg19$start, end=N.intervals.hg19$end), names = N.intervals.hg19$name)
 
-#omimData<-read.delim("/media/DC3C31523C312942/OMIM/genemap_May24th_simplified.bed")
-omimData<-read.delim("/media/gensp/DATA/NGSpipeline/databases/OMIM/31012018/genemap2_hg19_hg20_phenotypes_senseNoConvertits_WithInheritances_Version_31012018.bed")
+omimData<-read.delim("~/databases/OMIM/31012018/genemap2_hg19_hg20_phenotypes_senseNoConvertits_WithInheritances_Version_31012018.bed")
 names(omimData)[1:3]<-c("chr","start", "end")
 omimData$chr<-gsub("chr", "", omimData$chr)
 omimData2<-omimData[!is.na(omimData$chr),]
-#omimData2$Phenotypes<-gsub("\\ ", "_", omimData2$Phenotypes)
 omimData.GRanges<-GRanges(seqnames = omimData2$chr, IRanges(start=omimData2$start, end=omimData2$end), names = omimData2$Phenotypes)
 
 # Whole Gene RefSeq # NEW 4 Maig 2017
-wholeGenes<-read.delim("/media/gensp/DATA/NGSpipeline/databases/UCSC/RefSeqGenes_RefFlat_WholeGeneHg19_1Febrer2018.bed", head=F)
+wholeGenes<-read.delim("~/databases/UCSC/RefSeqGenes_RefFlat_WholeGeneHg19_1Febrer2018.bed", head=F)
 names(wholeGenes)<-c("chr","start","end","gene","kk","strand","V7","V8","V9","V10","V11","V12")
 wholeGenes$chr<-gsub("chr", "", wholeGenes$chr)
 wholeGenes.GRanges<-GRanges(seqnames = wholeGenes$chr, IRanges(start=wholeGenes$start, end=wholeGenes$end), names = wholeGenes$gene)
 
-# CNVs exomes 2016 i 2017 fins 4 Maig:
-#qDels<-read.delim("/media/DC3C31523C312942/DATA/qGenAnalysis/ExomeDepth_CNVS_Agi51/CNVs_4Maig2017_deletions.txt")
-#qDels.GRanges<-GRanges(seqnames = qDels$chr, IRanges(start=qDels$start, end=qDels$end), names = qDels$sample)
-#qDups<-read.delim("/media/DC3C31523C312942/DATA/qGenAnalysis/ExomeDepth_CNVS_Agi51/CNVs_4Maig2017_duplications.txt")
-#qDups.GRanges<-GRanges(seqnames = qDups$chr, IRanges(start=qDups$start, end=qDups$end), names = qDups$sample)
-
 # Segmental Dups
-segdup<-read.delim("/media/gensp/DATA/NGSpipeline/databases/UCSC/genomicSuperDups_hg19_13Feb2018.bed",head=F)
+segdup<-read.delim("~/databases/UCSC/genomicSuperDups_hg19_13Feb2018.bed",head=F)
 names(segdup)[1:3]<-c("chr","start", "end")
 segdup$chr<-gsub("chr", "", segdup$chr)
 segdup.GRanges<-GRanges(seqnames = segdup$chr, IRanges(start=segdup$start, end=segdup$end), names = segdup$V4)
 
 # DGV
-dgv<-read.delim("/media/gensp/DATA/NGSpipeline/databases/UCSC/dgvMerged_hg19_13Feb2018.bed",head=T)
+dgv<-read.delim("~/databases/UCSC/dgvMerged_hg19_13Feb2018.bed",head=T)
 names(dgv)[1:3]<-c("chr","start", "end")
 dgv$chr<-gsub("chr", "", dgv$chr)
 dgv.GRanges<-GRanges(seqnames = dgv$chr, IRanges(start=dgv$start, end=dgv$end), names = dgv[,c(4:16)])
@@ -98,23 +75,13 @@ capture$chromosome<-gsub("chr", "", capture$chromosome)
 captureProbes<-capture[,c(1:3)]
 capture.GRanges <- GRanges(seqnames = capture$chromosome, IRanges(start=capture$start,end=capture$end))
 ########################### ###########################
-# FI DADES EXISTENTS ###########################
+# EN DATA needed
 ########################### ###########################
-
 setwd(bamDir)
-# BAM a afegir (el de la mostra individual a analitzar)
-my.bams<-dir(bamDir)[grep(paste(ID,".final.bam$",sep=""), dir(bamDir))] # LLista de fitxers bam a la carpeta seleccionada Agilent o Nimblegen
+my.bams<-dir(bamDir)[grep(paste(ID,".final.bam$",sep=""), dir(bamDir))] 
 
 ####################### BAM COUNTS #######################
-####### Partint de 0, si s'hagués de llegit tots els bams de la carpeta:
-#date<-gsub("-","_",Sys.Date())
-#my.counts <- getBamCounts(bed.frame = captureProbes , bam.files = dir(bamDir)[grep(".final.bam$", dir(bamDir))], include.chr = FALSE, referenceFasta = fasta) 
-#ExomeCount.dafr <- as(my.counts[, colnames(my.counts)], 'data.frame')
-#ExomeCount.dafr$names<-c("NA")
-#date<-gsub("-","_",Sys.Date())
-#write.table(ExomeCount.dafr, paste(bamDir,"/FromExonsExomeCount.dafr.", captura, ".", date, ".txt", sep=""), quote=F, sep="\t", row.names=F)
-####### SI JA EXISTEIX EXOMECOUNT GUARDAT: 
-# Recupero ExomeCount.dafr amb dades bams anteriors i afegeixo les dades dels nous bams a analitzar:
+####### Recovering data from last existing bamCount
 details <- file.info(list.files(pattern="FromExonsExomeCount.dafr*"))
 details <- details[with(details, order(as.POSIXct(mtime))), ]
 ExomeCount.daframes <- rownames(details)
@@ -122,44 +89,40 @@ lastExomeCount<-ExomeCount.daframes[length(ExomeCount.daframes)]
 print(paste("LastExomeCount: ", lastExomeCount, sep=""))
 ExomeCount.dafr<-read.delim(lastExomeCount)
 
-######## Introduir nous bams: ####################### 
+######## Introducing new data (if any) from bams: ####################### 
 #####################################################
 for(a in unique(my.bams)){
   a2<-gsub("-","\\.",paste("X",a,sep=""))
   a3<-gsub("-","\\.",a)
   toMatch<-paste(a,a2,a3,sep="|")
   if(length(names(ExomeCount.dafr)[grep(toMatch, names(ExomeCount.dafr))]) < 1 ) {
-    print(paste("Afegint Mostra ", a, " nova", sep=""))
+    print(paste("Adding new ", a, " sample", sep=""))
     my.new.count<-getBamCounts(bed.frame = captureProbes , bam.file = paste(bamDir,  "/",a,  sep="") , include.chr = FALSE, referenceFasta = fasta) 
     test<-as(my.new.count[, colnames(my.new.count)], 'data.frame')
     #names(test)[6]<-a
     ExomeCount.dafr2<-cbind(ExomeCount.dafr, test[names(test)==a | names(test)==a2 ])
     ExomeCount.dafr<-ExomeCount.dafr2
   } else {
-    print(paste("Mostra ", a, " ja afegida abans", sep=""))
+    print(paste("Sample ", a, " already added", sep=""))
   }
 }
 
 date<-gsub("-","_",Sys.Date())
 #write.table(ExomeCount.dafr, paste(bamDir,"/FromExonsExomeCount.dafr.", captura, ".", date, ".txt", sep=""), quote=F, sep="\t", row.names=F)
-####################### FI BAM COUNTS #######################
+####################### END BAM COUNTS #######################
 
 ##########################################
-#### ANÀLISI MOSTRES CONTRA TOTES LES ALTRES MOSTRES 
+#### Sample ANALYSIS
 ##########################################
 setwd(outDir)
-#for(mostra in mostres[,1]){
-#for(mostra in unique(ID)){
 mostra<-ID
 sampleName<-gsub("-",".",mostra)
 toMatch<-paste(mostra,sampleName,sep="|")
-print(paste("ANALITZANT MOSTRA ", mostra, sep=""))
-#bamName<-gsub("-", ".", dir(bamDir)[grep (".bam$", dir(bamDir))][grep(sampleName,dir(bamDir)[grep (".bam$", dir(bamDir))])])
-#bamName<-gsub("-", ".", dir(bamDir)[grep (".bam$", dir(bamDir))][grep(sampleName,dir(bamDir)[grep (".bam$", dir(bamDir))])])
+print(paste("ANALYSING SAMPLE ", mostra, sep=""))
 
 my.test <- ExomeCount.dafr[,grep(toMatch, names(ExomeCount.dafr))]
 #########################################################
-# Totes les altres com referencia:
+# Rest of samples as reference
 my.ref.samples <- gsub("-", ".", names(ExomeCount.dafr)[grep(toMatch,names(ExomeCount.dafr), invert=TRUE)])[grep("bam$", gsub("-", ".", names(ExomeCount.dafr)[grep(toMatch,names(ExomeCount.dafr), invert=TRUE)]) )]
 #my.ref.samples <- gsub("-", ".", my.bams[grep(bamName,my.bams, invert=TRUE)])
 my.gender<-c("ContraTotes")
@@ -240,15 +203,15 @@ if(length(my.ref.samples)>1){
     write.table(file = output.file,  x = all.exons@CNV.calls, row.names = FALSE, quote=F, sep="\t")
 }
 #######################################################################################
-## CNVs i PLOTS SI HI HAN CNVs amb els GENS CANDIDATS  ######################
+## CNVs-> PLOTS IF there are candidate CNVs
 #######################################################################################
 if(candListCheck!="SenseCandList" & length(all.exons@CNV.calls$start)!=0){
   candList<-read.delim(candListCheck)
   names(candList)<-c("Gen")
   
-  if((regionName==captura) & (captura==label)){  # Si la llista era de tots els gens de la captura: Subset és tot.
+  if((regionName==captura) & (captura==label)){  # If ID to analyse is the whole capture, then subset is every gene in the capture
   candCnvs<-outAns
-  } else {  # Si la llista NO era de tots els gens de la captura: Subset de la llista de gens candidats
+  } else {  # If ID to analyse is NOT the whole capture, then subset genes of interest data
   toMatch<-paste(as.character(candList$Gen),collapse="|")
   candCnvs<-outAns[grep(toMatch, outAns$Genes),]
     
